@@ -4,7 +4,7 @@ import glob
 import gpxpy
 import gpxpy.gpx
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,timezone
 
 
 
@@ -21,8 +21,7 @@ def procXml(gpxPath,time_s):
     # 读取文件
     gpx_file = open(gpxPath, 'r', encoding='UTF-8')
     gpx = gpxpy.parse(gpx_file)
-    if time_s is None:
-        time_s = gpx.tracks[0].segments[0].points[0].time
+    time_s = gpx.tracks[0].segments[0].points[0].time
     last_t = time_s
     
     delta_t = timedelta(seconds=0)  
@@ -49,22 +48,27 @@ def procXml(gpxPath,time_s):
                     cyc_time += (cur_t-last_t)
 
                 last_t = cur_t
-                final_t = point.time
 
     print(f'运动时间为：{cyc_time}')
 
     if ( cyc_time > timedelta(hours=12)):
         print(f'运动时间为{cyc_time},大于12h，对时间进行压缩')
-        totol_t = cyc_time
-        scale_t = timedelta(hours=12)/totol_t
-
+        scale_t = timedelta(hours=11,minutes=30)/cyc_time
+        
+        cyc_time=timedelta(seconds=0)
+        last_t = gpx.tracks[0].segments[0].points[0].time
         for track in gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
                     delta_t = scale_t*(point.time-time_s)
                     print(f'delta_t:{delta_t}')
                     point.time = time_s+delta_t
-
+                    cur_t = point.time
+                    if (cur_t-last_t<=timedelta(seconds=60)):
+                        cyc_time += (cur_t-last_t)
+                    last_t=cur_t
+    
+    print(f'更新后运动时间为：{cyc_time}')
     # print('Created GPX:', gpx.to_xml())
     with open(newGpxPath, 'w', encoding='UTF-8') as f:
         f.write(gpx.to_xml())
@@ -83,7 +87,7 @@ def main():
     if args.f:  fileList=[args.f]
 
     if args.t:
-        time_s=datetime.now()-timedelta(hours=args.t)
+        time_s=datetime.now(timezone.utc)-timedelta(hours=args.t)# 此处需要修改
     else: time_s=None
 
     for p in fileList:
