@@ -34,7 +34,7 @@ def procXml(gpxPath,time_s):
                 # print('Point at ({0},{1}) -> {2}'.format(point.latitude, point.longitude, point.elevation))
                 # print(f'当前点时间：{point.time}')
                 cur_t = point.time
-                if (cur_t.day != t1.day and cur_t.day != last_t.day):  # 日期变化,需要向前一定时间
+                if (cur_t.day != time_s.day and cur_t.day != last_t.day):  # 日期变化,需要向前一定时间
                     delta_t = delta_t + last_t-cur_t + \
                         timedelta(minutes=3)  # 向前移动的时间段，隔天累加移动时间
 
@@ -43,7 +43,6 @@ def procXml(gpxPath,time_s):
                     print(f'修改后时间：{point.time}，时间差：{delta_t}')
                 last_t = cur_t
                 final_t = point.time
-    
 
     if (final_t-time_s > timedelta(hours=12)):
         print(f'运动时间为{final_t-time_s},大于12h，对时间进行压缩')
