@@ -1,30 +1,33 @@
 import os
+import sys
 import glob
 import gpxpy
 import gpxpy.gpx
+import argparse
 from datetime import datetime, timedelta
 
 
-def procXml(gpxPath):
+
+def procXml(gpxPath,time_s):
     fileDir, fileName = os.path.split(gpxPath)
     fileName = 'update_'+fileName
-    jsonDir = os.path.join(fileDir, 'update')
-    if not os.path.exists(jsonDir):
-        os.mkdir(jsonDir)
+    newDir = os.path.join(fileDir, 'update')
+    if not os.path.exists(newDir):
+        os.mkdir(newDir)
 
     # -----------------------------
-    newGpxPath = os.path.join(jsonDir, fileName)
-
+    newGpxPath = os.path.join(newDir, fileName)
     # ----------------------
     # 读取文件
     gpx_file = open(gpxPath, 'r', encoding='UTF-8')
     gpx = gpxpy.parse(gpx_file)
-    t1 = gpx.tracks[0].segments[0].points[0].time
-    last_t = t1
+    if time_s is not None:
+        time_s = gpx.tracks[0].segments[0].points[0].time
+    last_t = time_s
     over24Flag = True
     delta_t = timedelta(seconds=0)  # 不移动
     # .total_seconds()
-    # 第一次处理，将所有时间变为同一天
+    # 第一次处理,将隔天数据累加起来
     for track in gpx.tracks:
         for segment in track.segments:
             for point in segment.points:
@@ -40,18 +43,19 @@ def procXml(gpxPath):
                     print(f'修改后时间：{point.time}，时间差：{delta_t}')
                 last_t = cur_t
                 final_t = point.time
+    
 
-    if (final_t-t1 > timedelta(hours=12)):
-        print('时间大于12h，对时间进行压缩')
-        totol_t = final_t-t1
+    if (final_t-time_s > timedelta(hours=12)):
+        print(f'运动时间为{final_t-time_s},大于12h，对时间进行压缩')
+        totol_t = final_t-time_s
         scale_t = timedelta(hours=11, minutes=55)/totol_t
 
         for track in gpx.tracks:
             for segment in track.segments:
                 for point in segment.points:
-                    delta_t = scale_t*(point.time-t1)
+                    delta_t = scale_t*(point.time-time_s)
                     print(f'delta_t:{delta_t}')
-                    point.time = t1+delta_t
+                    point.time = time_s+delta_t
 
     # print('Created GPX:', gpx.to_xml())
     with open(newGpxPath, 'w', encoding='UTF-8') as f:
@@ -59,24 +63,34 @@ def procXml(gpxPath):
 
 
 def main():
-    # if len(sys.argv) < 2:
-    #     print('Specify the gpx file path')
-    #     return
+    parser=argparse.ArgumentParser()
+    parser.add_argument("-f",help='gpx file name',type=str)
+    parser.add_argument("-d",help="gpx file dir name",type=str)
+    parser.add_argument("-t",help="how many hours before the current time",type=int)
 
-    gpsDir = './gps'
-    abspath = os.path.abspath(gpsDir)
-    fileList = glob.glob(gpsDir+'/*.gpx')
+    args=parser.parse_args()
+
+    if args.d:  fileList = glob.glob(args.d+'/*.gpx')
+    
+    if args.f:  fileList=[args.f]
+
+    if args.t:
+        time_s=datetime.now()-timedelta(hours=args.t)
+    else: time_s=None
+
     for p in fileList:
         if os.path.isfile(p):
             gpxPath = os.path.abspath(p)
-            procXml(gpxPath)
+           
+            print('Processing '+str(p))
+            try:
+                procXml(gpxPath,time_s)
+                print('===time changed gpx file was generated.===')
+            except:
+                print('=====Somthing was wrong！=====')
 
-            # print('Processing'+str(gpxPath))
-            # try:
-            #     procXml(gpxPath)
-            #     print('Coresponding JSON file was generated.')
-            # except:
-            #     print('=====Somthing was wrong！=====')
+        else:
+            print('the input file was not found!')
 
 
 if __name__ == '__main__':
