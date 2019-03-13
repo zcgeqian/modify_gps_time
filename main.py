@@ -21,11 +21,12 @@ def procXml(gpxPath,time_s):
     # 读取文件
     gpx_file = open(gpxPath, 'r', encoding='UTF-8')
     gpx = gpxpy.parse(gpx_file)
-    if time_s is not None:
+    if time_s is None:
         time_s = gpx.tracks[0].segments[0].points[0].time
     last_t = time_s
-    over24Flag = True
-    delta_t = timedelta(seconds=0)  # 不移动
+    
+    delta_t = timedelta(seconds=0)  
+    cyc_time=timedelta(seconds=0)
     # .total_seconds()
     # 第一次处理,将隔天数据累加起来
     for track in gpx.tracks:
@@ -41,13 +42,21 @@ def procXml(gpxPath,time_s):
                 point.adjust_time(delta_t)
                 if (delta_t != timedelta(seconds=0)):
                     print(f'修改后时间：{point.time}，时间差：{delta_t}')
+                # compute cyc_time
+                if (cur_t-last_t>timedelta(seconds=60)):
+                    pass
+                else:
+                    cyc_time += (cur_t-last_t)
+
                 last_t = cur_t
                 final_t = point.time
 
-    if (final_t-time_s > timedelta(hours=12)):
-        print(f'运动时间为{final_t-time_s},大于12h，对时间进行压缩')
-        totol_t = final_t-time_s
-        scale_t = timedelta(hours=11, minutes=55)/totol_t
+    print(f'运动时间为：{cyc_time}')
+
+    if ( cyc_time > timedelta(hours=12)):
+        print(f'运动时间为{cyc_time},大于12h，对时间进行压缩')
+        totol_t = cyc_time
+        scale_t = timedelta(hours=12)/totol_t
 
         for track in gpx.tracks:
             for segment in track.segments:
