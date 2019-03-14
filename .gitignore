@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .vscode
+update*.gpx
+update/
 
 # C extensions
 *.so
